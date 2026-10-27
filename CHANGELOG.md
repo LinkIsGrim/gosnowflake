@@ -4,6 +4,7 @@
 
 New features:
 - Added the monitoring endpoint's timing breakdown (`TotalDuration`, `GsCompileDuration`, `GsExecDuration`, `XpExecDuration`, `QueryRetryTime`, `FaultHandlingTime`) to `SnowflakeQueryStatus`, so `GetQueryStatus` callers can read them. These fields were already returned by `/monitoring/queries/{id}` but dropped while decoding the response (snowflakedb/gosnowflake#37).
+- Added `UploadStream` / `UploadStreamWithConfig` on `SnowflakeConnection`: upload one stage object from an `io.Reader`. Gzip is the default, the destination name is a basename, and an optional prefix selects the stage directory. The payload stays in memory until 128 MiB, then spills to disk. Prefer this over `WithFilePutStream`, which still buffers the whole file (snowflakedb/gosnowflake#31).
 
 Internal changes:
 - Upload GHA coverage reports to Dedicated Codecov (`snowflake.codecov.io`) from Jenkins snowos instead of `codecov-action` on GitHub-hosted runners, and bump golangci-lint to v2.14 for Go 1.27 (snowflakedb/gosnowflake#34).

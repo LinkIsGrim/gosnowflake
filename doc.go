@@ -1467,7 +1467,18 @@ conventions. Ensure that you specify path names appropriately. This is
 particularly important on Windows, which uses the backslash character as
 both an escape character and as a separator in path names.
 
-To send information from a stream (rather than a file) use code similar to the code below.
+To upload a reader as one stage object, use `SnowflakeConnection.UploadStream`.
+The destination name is a basename. Put directories in `UploadStreamConfig.DestPrefix`.
+The driver gzips by default and does not close `src`. Close `src` after `UploadStream` returns:
+
+	err = conn.Raw(func(x any) error {
+		sc := x.(SnowflakeConnection)
+		return sc.UploadStream(ctx, "@~", "data1.txt", src)
+	})
+
+Use `UploadStreamWithConfig` for `CompressionNone`, `MaxBuffer`, `SpillDir`, or `Overwrite`.
+
+`WithFilePutStream` still works but buffers the entire object in memory before uploading it. Prefer `UploadStream`.
 (The ReplaceAll() function is needed on Windows to handle backslashes in the path to the file.)
 
 	fileStream, _ := os.Open(fname)
