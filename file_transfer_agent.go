@@ -5,6 +5,7 @@ package gosnowflake
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -420,8 +421,7 @@ func (sfa *snowflakeFileTransferAgent) initFileMetadata() error {
 			fileName := sfa.srcFiles[0]
 			fileInfo, err := os.Stat(fileName)
 			if err != nil {
-				buf := new(bytes.Buffer)
-				_, err := buf.ReadFrom(sfa.sourceStream)
+				buf, err := readSourceStream(sfa.sourceStream)
 				if err != nil {
 					return exceptionTelemetry(&SnowflakeError{
 						Number:      ErrFileNotExists,
@@ -1407,6 +1407,17 @@ func compressDataIfRequired(meta *fileMetadata, fileUtil *snowflakeFileUtil, tmp
 	return err
 }
 
+// readSourceStream returns the contents of a WithFilePutStream reader. A
+// *bytes.Buffer is drained without copying its contents.
+func readSourceStream(r io.Reader) (*bytes.Buffer, error) {
+	if b, ok := r.(*bytes.Buffer); ok {
+		return bytes.NewBuffer(b.Next(b.Len())), nil
+	}
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r)
+	return buf, err
+}
+
 func updateUploadSize(meta *fileMetadata, fileUtil *snowflakeFileUtil) error {
 	var err error
 	if meta.srcStream != nil {
@@ -1563,12 +1574,14 @@ func encryptDataIfRequired(meta *fileMetadata, ct cloudType) error {
 	}
 	var err error
 	if meta.srcStream != nil {
-		var encryptedStream bytes.Buffer
 		// realSrcStream is compressed plaintext until this writes ciphertext.
 		source := meta.srcStream
 		if meta.realSrcStream != nil {
 			source = meta.realSrcStream
 		}
+		// CBC with PKCS5 padding adds at most one block.
+		var encryptedStream bytes.Buffer
+		encryptedStream.Grow(source.Len() + aes.BlockSize)
 		meta.encryptMeta, err = encryptStreamCBC(meta.encryptionMaterial, bytes.NewReader(source.Bytes()), &encryptedStream, 0)
 		if err != nil {
 			return err

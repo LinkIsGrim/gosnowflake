@@ -1480,3 +1480,19 @@ func TestUpdateUploadSizeForDrainedPutStream(t *testing.T) {
 		})
 	}
 }
+
+func TestReadSourceStream(t *testing.T) {
+	data := []byte("gosnowflake")
+
+	src := bytes.NewBuffer(append([]byte(nil), data...))
+	backing := src.Bytes()
+	buf, err := readSourceStream(src)
+	assertNilF(t, err)
+	assertEqualE(t, buf.String(), string(data))
+	assertEqualE(t, src.Len(), 0, "the source buffer should be drained")
+	assertTrueE(t, &buf.Bytes()[0] == &backing[0], "a *bytes.Buffer source should not be copied")
+
+	buf, err = readSourceStream(strings.NewReader(string(data)))
+	assertNilF(t, err)
+	assertEqualE(t, buf.String(), string(data))
+}

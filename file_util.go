@@ -21,14 +21,9 @@ const (
 )
 
 func (util *snowflakeFileUtil) compressFileWithGzipFromStream(srcStream **bytes.Buffer) (*bytes.Buffer, int, error) {
-	r := getReaderFromBuffer(srcStream)
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		return nil, -1, err
-	}
 	var c bytes.Buffer
 	w := gzip.NewWriter(&c)
-	if _, err := w.Write(buf); err != nil { // write buf to gzip writer
+	if _, err := w.Write((*srcStream).Bytes()); err != nil {
 		return nil, -1, err
 	}
 	if err := w.Close(); err != nil {
