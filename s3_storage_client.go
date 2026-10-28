@@ -226,10 +226,20 @@ func (util *snowflakeS3Client) uploadFile(
 	_, err = withCloudStorageTimeout(ctx, util.cfg, func(ctx context.Context) (any, error) {
 		if meta.srcStream != nil {
 			uploadStream := cmp.Or(meta.realSrcStream, meta.srcStream)
+			// The uploader copies the whole body into a new slice before a
+			// single-part upload, so send those directly.
+			if meta.mockUploader == nil && int64(uploadStream.Len()) < partSize {
+				return client.PutObject(ctx, &s3.PutObjectInput{
+					Bucket:   &s3loc.bucketName,
+					Key:      &s3path,
+					Body:     bytes.NewReader(uploadStream.Bytes()),
+					Metadata: s3Meta,
+				})
+			}
 			return uploader.UploadObject(ctx, &transfermanager.UploadObjectInput{
 				Bucket:   &s3loc.bucketName,
 				Key:      &s3path,
-				Body:     bytes.NewBuffer(uploadStream.Bytes()),
+				Body:     bytes.NewReader(uploadStream.Bytes()),
 				Metadata: s3Meta,
 			})
 		}
