@@ -1409,7 +1409,15 @@ func compressDataIfRequired(meta *fileMetadata, fileUtil *snowflakeFileUtil, tmp
 
 func updateUploadSize(meta *fileMetadata, fileUtil *snowflakeFileUtil) error {
 	var err error
-	if meta.fileStream != nil {
+	if meta.srcStream != nil {
+		// fileStream was already drained into srcStream, so measure the bytes
+		// that will be uploaded.
+		data := meta.srcStream
+		if meta.realSrcStream != nil {
+			data = meta.realSrcStream
+		}
+		meta.sha256Digest, meta.uploadSize, err = fileUtil.getDigestAndSizeForStream(bytes.NewReader(data.Bytes()))
+	} else if meta.fileStream != nil {
 		meta.sha256Digest, meta.uploadSize, err = fileUtil.getDigestAndSizeForStream(meta.fileStream)
 	} else {
 		meta.sha256Digest, meta.uploadSize, err = fileUtil.getDigestAndSizeForFile(meta.realSrcFileName)

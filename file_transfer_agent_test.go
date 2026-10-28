@@ -3,6 +3,8 @@ package gosnowflake
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -1450,6 +1452,31 @@ func TestEncryptFile(t *testing.T) {
 				assertNilF(t, uploadMeta.encryptMeta, "encryption metadata should be empty")
 				assertEqualF(t, uploadMeta.realSrcFileName, srcF, "file should not be encrypted")
 			}
+		})
+	}
+}
+
+func TestUpdateUploadSizeForDrainedPutStream(t *testing.T) {
+	data := bytes.Repeat([]byte("gosnowflake,"), 1000)
+	for _, compress := range []bool{false, true} {
+		t.Run(fmt.Sprintf("compress=%v", compress), func(t *testing.T) {
+			source := bytes.NewReader(data)
+			buf := new(bytes.Buffer)
+			_, err := buf.ReadFrom(source)
+			assertNilF(t, err)
+			meta := &fileMetadata{srcStream: buf, fileStream: source, requireCompress: compress}
+
+			fileUtil := new(snowflakeFileUtil)
+			assertNilF(t, compressDataIfRequired(meta, fileUtil, ""))
+			assertNilF(t, updateUploadSize(meta, fileUtil))
+
+			uploaded := meta.srcStream.Bytes()
+			if compress {
+				uploaded = meta.realSrcStream.Bytes()
+			}
+			sum := sha256.Sum256(uploaded)
+			assertEqualE(t, meta.uploadSize, int64(len(uploaded)))
+			assertEqualE(t, meta.sha256Digest, base64.StdEncoding.EncodeToString(sum[:]))
 		})
 	}
 }
