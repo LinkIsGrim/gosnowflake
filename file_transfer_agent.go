@@ -1161,6 +1161,7 @@ func (sfa *snowflakeFileTransferAgent) getStorageClient(stageLocationType cloudT
 		return &remoteStorageUtil{
 			cfg:       sfa.sc.cfg,
 			telemetry: sfa.sc.telemetry,
+			transport: sfa.sc.cloudProviderTransport,
 		}
 	default:
 		return nil

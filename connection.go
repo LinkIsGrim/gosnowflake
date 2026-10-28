@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -80,6 +81,10 @@ type snowflakeConn struct {
 	syncParams          syncParams
 	idToken             string
 	mfaToken            string
+
+	cloudTransportOnce sync.Once
+	cloudTransport     http.RoundTripper
+	cloudTransportErr  error
 }
 
 var (
@@ -291,6 +296,18 @@ func (sc *snowflakeConn) cleanup() {
 	if sc.rest != nil && sc.rest.Client != nil {
 		sc.rest.Client.CloseIdleConnections()
 	}
+	if t, ok := sc.cloudTransport.(interface{ CloseIdleConnections() }); ok {
+		t.CloseIdleConnections()
+	}
+}
+
+// cloudProviderTransport returns the transport for stage storage requests,
+// created on first use and shared by the connection's file transfers.
+func (sc *snowflakeConn) cloudProviderTransport() (http.RoundTripper, error) {
+	sc.cloudTransportOnce.Do(func() {
+		sc.cloudTransport, sc.cloudTransportErr = newTransportFactory(sc.cfg, sc.telemetry).createTransport(transportConfigFor(transportTypeCloudProvider))
+	})
+	return sc.cloudTransport, sc.cloudTransportErr
 }
 
 func (sc *snowflakeConn) Close() (err error) {

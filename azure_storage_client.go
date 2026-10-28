@@ -29,6 +29,7 @@ var azureGitRepositoryPathPattern = regexp.MustCompile(`^git-repositoryzz[0-9a-f
 type snowflakeAzureClient struct {
 	cfg       *Config
 	telemetry *snowflakeTelemetry
+	transport func() (http.RoundTripper, error)
 }
 
 type azureLocation struct {
@@ -56,7 +57,7 @@ func (util *snowflakeAzureClient) createClient(info *execResponseStageInfo, _ bo
 	if err != nil {
 		return nil, err
 	}
-	transport, err := newTransportFactory(util.cfg, telemetry).createTransport(transportConfigFor(transportTypeCloudProvider))
+	transport, err := cloudProviderTransport(util.transport, util.cfg, telemetry)
 	if err != nil {
 		return nil, err
 	}

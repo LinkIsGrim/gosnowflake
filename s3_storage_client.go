@@ -34,6 +34,7 @@ const (
 type snowflakeS3Client struct {
 	cfg       *Config
 	telemetry *snowflakeTelemetry
+	transport func() (http.RoundTripper, error)
 }
 
 type s3Location struct {
@@ -52,7 +53,7 @@ func (util *snowflakeS3Client) createClient(info *execResponseStageInfo, useAcce
 	s3Logger := logging.LoggerFunc(s3LoggingFunc)
 	endPoint := getS3CustomEndpoint(info)
 
-	transport, err := newTransportFactory(util.cfg, telemetry).createTransport(transportConfigFor(transportTypeCloudProvider))
+	transport, err := cloudProviderTransport(util.transport, util.cfg, telemetry)
 	if err != nil {
 		return nil, err
 	}
