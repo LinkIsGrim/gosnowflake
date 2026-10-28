@@ -1,10 +1,13 @@
 package gosnowflake
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // TestProcessEncryptedFileToDestination_DecryptionFailure tests that temporary files
@@ -115,4 +118,27 @@ func verifyNoTmpFilesLeftBehind(t *testing.T, fullDstFileName string) {
 		}
 	}
 	assertEqualF(t, tmpFileCount, 0, "No .tmp files should remain in destination directory after successful operation")
+}
+
+func TestStorageClientsShareConnectionTransport(t *testing.T) {
+	sc := &snowflakeConn{cfg: &Config{
+		DisableOCSPChecks:       true,
+		CertRevocationCheckMode: CertRevocationCheckDisabled,
+	}}
+	sfa := &snowflakeFileTransferAgent{sc: sc}
+	info := &execResponseStageInfo{LocationType: string(s3Client), Region: "us-west-2"}
+
+	s3Transport := func() http.RoundTripper {
+		client, err := sfa.getStorageClient(s3Client).createClient(info, false, sc.cfg, nil)
+		assertNilF(t, err)
+		return client.(*s3.Client).Options().HTTPClient.(*http.Client).Transport
+	}
+	first := s3Transport()
+	assertNotNilF(t, first)
+	assertTrueE(t, first == s3Transport(), "S3 clients of one connection should share a transport")
+
+	other := &snowflakeFileTransferAgent{sc: &snowflakeConn{cfg: sc.cfg}}
+	client, err := other.getStorageClient(s3Client).createClient(info, false, sc.cfg, nil)
+	assertNilF(t, err)
+	assertTrueE(t, first != client.(*s3.Client).Options().HTTPClient.(*http.Client).Transport, "connections should not share a transport")
 }

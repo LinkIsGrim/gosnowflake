@@ -344,6 +344,7 @@ func (sfa *snowflakeFileTransferAgent) openDownloadStream(ctx context.Context, f
 	rsu := &remoteStorageUtil{
 		cfg:       sfa.sc.cfg,
 		telemetry: sfa.sc.telemetry,
+		transport: sfa.sc.cloudProviderTransport,
 	}
 	utilClass := rsu.getNativeCloudType(meta.stageInfo.LocationType, sfa.sc.cfg)
 	if utilClass == nil {

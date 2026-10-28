@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,20 +39,26 @@ type cloudClient any
 type remoteStorageUtil struct {
 	cfg       *Config
 	telemetry *snowflakeTelemetry
+	// transport returns the connection's cloud provider transport, so that
+	// clients for successive transfers reuse its idle connections. When nil,
+	// each client gets a new transport.
+	transport func() (http.RoundTripper, error)
 }
 
 func (rsu *remoteStorageUtil) getNativeCloudType(cli string, cfg *Config) cloudUtil {
 	if cloudType(cli) == s3Client {
 		logger.Info("Using S3 client for remote storage")
 		return &snowflakeS3Client{
-			cfg,
-			rsu.telemetry,
+			cfg:       cfg,
+			telemetry: rsu.telemetry,
+			transport: rsu.transport,
 		}
 	} else if cloudType(cli) == azureClient {
 		logger.Info("Using Azure client for remote storage")
 		return &snowflakeAzureClient{
-			cfg,
-			rsu.telemetry,
+			cfg:       cfg,
+			telemetry: rsu.telemetry,
+			transport: rsu.transport,
 		}
 	} else if cloudType(cli) == gcsClient {
 		logger.Info("Using GCS client for remote storage")

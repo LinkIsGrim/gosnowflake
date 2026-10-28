@@ -171,6 +171,15 @@ func (tf *transportFactory) createCRLValidator() (*crlValidator, error) {
 	)
 }
 
+// cloudProviderTransport returns the transport from shared when it is set, and
+// a new cloud provider transport otherwise.
+func cloudProviderTransport(shared func() (http.RoundTripper, error), cfg *Config, telemetry *snowflakeTelemetry) (http.RoundTripper, error) {
+	if shared != nil {
+		return shared()
+	}
+	return newTransportFactory(cfg, telemetry).createTransport(transportConfigFor(transportTypeCloudProvider))
+}
+
 // createTransport is the main entry point for creating transports
 func (tf *transportFactory) createTransport(transportConfig *transportConfig) (http.RoundTripper, error) {
 	if tf.config == nil {
