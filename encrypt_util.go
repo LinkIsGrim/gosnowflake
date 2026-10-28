@@ -61,10 +61,9 @@ func encryptStreamCBC(
 	// encrypt file with CBC
 	padded := false
 	for {
-		// read the stream buffer up to len(chunk) bytes into chunk
-		// note that all spaces in chunk may be used even if Read() returns n < len(chunk)
-		n, err := src.Read(chunk)
-		if err != nil && err != io.EOF {
+		// Fill the chunk so that only the last one can need padding.
+		n, err := io.ReadFull(src, chunk)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 			return nil, fmt.Errorf("reading: %w", err)
 		}
 		if n == 0 {

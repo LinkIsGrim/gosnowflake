@@ -377,3 +377,22 @@ func TestEncryptDecryptFileGCM(t *testing.T) {
 
 	assertEqualE(t, string(fileContent), "abc")
 }
+
+func TestEncryptStreamCBCShortReads(t *testing.T) {
+	sfe := snowflakeFileEncryption{
+		QueryStageMasterKey: "YWJjZGVmMTIzNDU2Nzg5MA==",
+		QueryID:             "unused",
+		SMKID:               9223372036854775807,
+	}
+	plaintext := bytes.Repeat([]byte("0123456789"), 1000)
+
+	var encrypted bytes.Buffer
+	meta, err := encryptStreamCBC(&sfe, iotest.OneByteReader(bytes.NewReader(plaintext)), &encrypted, 64)
+	assertNilF(t, err)
+
+	r, err := decryptStreamCBC(meta, &sfe, 0, &encrypted)
+	assertNilF(t, err)
+	decrypted, err := io.ReadAll(r)
+	assertNilF(t, err)
+	assertTrueE(t, bytes.Equal(decrypted, plaintext), "decrypted data should match the plaintext")
+}
