@@ -76,12 +76,7 @@ func TestCreateStandardTransportSuccess(t *testing.T) {
 }
 
 func TestSnowflakeTransportKeepsIdleConnsForChunkDownloads(t *testing.T) {
-	factory := newTransportFactory(&Config{
-		DisableOCSPChecks:       true,
-		CertRevocationCheckMode: CertRevocationCheckDisabled,
-	}, nil)
-
-	rt, err := factory.createTransport(transportConfigFor(transportTypeSnowflake))
+	rt, err := newTransportFactory(&Config{}, nil).createTransport(transportConfigFor(transportTypeSnowflake))
 	assertNilF(t, err)
 	transport := castToTransport(rt)
 	assertNotNilF(t, transport, "Expected http.Transport")
